@@ -2,7 +2,7 @@
 #  DASHBOARD ANALISIS BRAND KOMPETITOR V7.4
 #  Dibuat oleh: Firman & Asisten AI Gemini
 #  Deskripsi: Aplikasi ini menganalisis keberadaan produk berdasarkan brand
-#             dan tanggal tertentu di berbagai toko kompetitor.
+#             dan TANGGAL tertentu di berbagai toko kompetitor.
 #  Pembaruan v7.4: Menambahkan kolom Terjual/Bln dan Omzet pada tabel detail.
 # ===================================================================================
 
@@ -85,13 +85,13 @@ def load_data_from_gsheets():
         # Mengubah nama kolom agar lebih konsisten
         df_combined.rename(columns={
             'NAMA': 'Nama Produk', 
-            'HARGA': 'Harga', 
+            'HARGA': 'HARGA', 
             'BRAND': 'Brand',
             'TERJUAL/BLN': 'Terjual/Bln'
         }, inplace=True)
 
         # Konversi tipe data kolom numerik, handle error jika ada
-        df_combined['Harga'] = pd.to_numeric(df_combined['Harga'], errors='coerce').fillna(0).astype(int)
+        df_combined['HARGA'] = pd.to_numeric(df_combined['HARGA'], errors='coerce').fillna(0).astype(int)
         df_combined['Terjual/Bln'] = pd.to_numeric(df_combined['Terjual/Bln'], errors='coerce').fillna(0).astype(int)
         df_combined['TANGGAL'] = pd.to_datetime(df_combined['TANGGAL'], errors='coerce').dt.date
 
@@ -114,7 +114,7 @@ def load_data_from_gsheets():
 # TAMPILAN UTAMA APLIKASI
 # ===================================================================================
 st.title("📊 Dashboard Analisis Brand Kompetitor")
-st.markdown("Pilih brand dan tanggal untuk melihat ringkasan performa di semua toko kompetitor.")
+st.markdown("Pilih brand dan TANGGAL untuk melihat ringkasan performa di semua toko kompetitor.")
 
 df_main = load_data_from_gsheets()
 
@@ -124,18 +124,18 @@ if df_main is not None and not df_main.empty:
         unique_brands = sorted(df_main['Brand_Utama'].unique())
         selected_brand = st.selectbox("Pilih Brand:", options=unique_brands, index=unique_brands.index("ACER") if "ACER" in unique_brands else 0)
     with col2:
-        min_date = df_main['Tanggal'].min()
-        max_date = df_main['Tanggal'].max()
-        selected_date = st.date_input("Pilih Tanggal:", value=max_date, min_value=min_date, max_value=max_date)
+        min_date = df_main['TANGGAL'].min()
+        max_date = df_main['TANGGAL'].max()
+        selected_date = st.date_input("Pilih TANGGAL:", value=max_date, min_value=min_date, max_value=max_date)
 
     if st.button("Tampilkan Analisis", type="primary", use_container_width=True):
         st.markdown("---")
-        st.subheader(f"Hasil Analisis untuk Brand '{selected_brand}' pada Tanggal {selected_date.strftime('%d %B %Y')}")
+        st.subheader(f"Hasil Analisis untuk Brand '{selected_brand}' pada TANGGAL {selected_date.strftime('%d %B %Y')}")
 
-        filtered_df = df_main[(df_main['Brand_Utama'] == selected_brand) & (df_main['Tanggal'] == selected_date)]
+        filtered_df = df_main[(df_main['Brand_Utama'] == selected_brand) & (df_main['TANGGAL'] == selected_date)]
 
         if filtered_df.empty:
-            st.warning("Tidak ada data ditemukan untuk brand dan tanggal yang dipilih.")
+            st.warning("Tidak ada data ditemukan untuk brand dan TANGGAL yang dipilih.")
         else:
             # --- MEMBUAT TABEL RINGKASAN ---
             summary_list = []
@@ -144,22 +144,22 @@ if df_main is not None and not df_main.empty:
             for store in all_stores:
                 store_data = filtered_df[filtered_df['Toko'] == store]
                 if store_data.empty:
-                    summary_list.append({'Toko': store, 'Total SKU': 0, 'SKU Tersedia': 0, 'SKU Habis': 0, 'Harga Rata-rata': 0, 'Harga Termurah': 0, 'Harga Termahal': 0})
+                    summary_list.append({'Toko': store, 'Total SKU': 0, 'SKU Tersedia': 0, 'SKU Habis': 0, 'HARGA Rata-rata': 0, 'HARGA Termurah': 0, 'HARGA Termahal': 0})
                     continue
 
                 total_sku = len(store_data)
                 tersedia_count = store_data[store_data['Status'] == 'Tersedia'].shape[0]
                 habis_count = total_sku - tersedia_count
                 
-                harga_valid = store_data[(store_data['Status'] == 'Tersedia') & (store_data['Harga'] > 0)]['Harga']
+                HARGA_valid = store_data[(store_data['Status'] == 'Tersedia') & (store_data['HARGA'] > 0)]['HARGA']
                 
-                avg_price = harga_valid.mean() if not harga_valid.empty else 0
-                min_price = harga_valid.min() if not harga_valid.empty else 0
-                max_price = harga_valid.max() if not harga_valid.empty else 0
+                avg_price = HARGA_valid.mean() if not HARGA_valid.empty else 0
+                min_price = HARGA_valid.min() if not HARGA_valid.empty else 0
+                max_price = HARGA_valid.max() if not HARGA_valid.empty else 0
 
                 summary_list.append({
                     'Toko': store, 'Total SKU': total_sku, 'SKU Tersedia': tersedia_count, 'SKU Habis': habis_count,
-                    'Harga Rata-rata': avg_price, 'Harga Termurah': min_price, 'Harga Termahal': max_price
+                    'HARGA Rata-rata': avg_price, 'HARGA Termurah': min_price, 'HARGA Termahal': max_price
                 })
             
             summary_df = pd.DataFrame(summary_list)
@@ -167,7 +167,7 @@ if df_main is not None and not df_main.empty:
             st.markdown("#### Ringkasan Performa Brand per Toko")
             st.dataframe(
                 summary_df.style.format({
-                    'Harga Rata-rata': "Rp {:,.0f}", 'Harga Termurah': "Rp {:,.0f}", 'Harga Termahal': "Rp {:,.0f}"
+                    'HARGA Rata-rata': "Rp {:,.0f}", 'HARGA Termurah': "Rp {:,.0f}", 'HARGA Termahal': "Rp {:,.0f}"
                 }).background_gradient(cmap='Greens', subset=['SKU Tersedia'])
                   .background_gradient(cmap='Reds', subset=['SKU Habis'])
                   .bar(subset=["Total SKU"], color='#86c5da'),
@@ -185,14 +185,14 @@ if df_main is not None and not df_main.empty:
                         st.info(f"Brand **{selected_brand}** tidak ditemukan di toko ini.")
                     else:
                         # Hitung Omzet
-                        store_data_detail['Omzet'] = store_data_detail['Harga'] * store_data_detail['Terjual/Bln']
+                        store_data_detail['Omzet'] = store_data_detail['HARGA'] * store_data_detail['Terjual/Bln']
                         
                         # Format kolom untuk tampilan
-                        store_data_detail['Harga (Rp)'] = store_data_detail['Harga'].apply(lambda x: f"{x:,.0f}".replace(',', '.'))
+                        store_data_detail['HARGA (Rp)'] = store_data_detail['HARGA'].apply(lambda x: f"{x:,.0f}".replace(',', '.'))
                         store_data_detail['Omzet (Rp)'] = store_data_detail['Omzet'].apply(lambda x: f"{x:,.0f}".replace(',', '.'))
                         
                         # Tentukan urutan kolom baru
-                        kolom_tampilan = ['Nama Produk', 'Harga (Rp)', 'Terjual/Bln', 'Omzet (Rp)', 'Status']
+                        kolom_tampilan = ['Nama Produk', 'HARGA (Rp)', 'Terjual/Bln', 'Omzet (Rp)', 'Status']
                         
                         st.dataframe(
                             store_data_detail[kolom_tampilan],
