@@ -1,9 +1,9 @@
 # ===================================================================================
-#  DASHBOARD ANALISIS BRAND KOMPETITOR V7.7
+#  DASHBOARD ANALISIS BRAND KOMPETITOR V7.6
 #  Dibuat oleh: Firman & Asisten AI Gemini
 #  Deskripsi: Aplikasi ini menganalisis keberadaan produk berdasarkan brand
 #             dan TANGGAL tertentu di berbagai toko kompetitor.
-#  Pembaruan v7.7: Menambahkan kembali pewarnaan pada tabel ringkasan pivot.
+#  Pembaruan v7.6: Mengubah format tabel ringkasan menjadi pivot (toko sebagai kolom).
 # ===================================================================================
 
 # ===================================================================================
@@ -126,7 +126,7 @@ if df_main is not None and not df_main.empty:
     with col2:
         min_date = df_main['TANGGAL'].min()
         max_date = df_main['TANGGAL'].max()
-        selected_date = st.date_input("Pilih TANGGAL:", value=max_date, min_value=min_date, max_date=max_date)
+        selected_date = st.date_input("Pilih TANGGAL:", value=max_date, min_value=min_date, max_value=max_date)
 
     if st.button("Tampilkan Analisis", type="primary", use_container_width=True):
         st.markdown("---")
@@ -170,9 +170,7 @@ if df_main is not None and not df_main.empty:
             st.markdown("#### Ringkasan Performa Brand per Toko")
             st.dataframe(
                 pivoted_summary_df.style.format("Rp {:,.0f}", subset=(['Total Omzet per Bulan'], slice(None)))
-                                          .format("{:,.0f}", subset=(['Total Produk Terjual per Bulan', 'Jumlah Produk Ready', 'Jumlah Produk Habis'], slice(None)))
-                                          .background_gradient(cmap='Greens', subset=(['Jumlah Produk Ready'], slice(None)))
-                                          .background_gradient(cmap='Reds', subset=(['Jumlah Produk Habis'], slice(None))),
+                                          .format("{:,.0f}", subset=(['Total Produk Terjual per Bulan', 'Jumlah Produk Ready', 'Jumlah Produk Habis'], slice(None))),
                 use_container_width=True
             )
 
@@ -204,3 +202,4 @@ if df_main is not None and not df_main.empty:
                         )
 else:
     st.error("Gagal memuat data. Periksa kembali koneksi atau konfigurasi Google Sheets Anda di st.secrets.")
+
