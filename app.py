@@ -1,9 +1,9 @@
 # ===================================================================================
-#  DASHBOARD ANALISIS BRAND KOMPETITOR V7.5
+#  DASHBOARD ANALISIS BRAND KOMPETITOR V7.6
 #  Dibuat oleh: Firman & Asisten AI Gemini
 #  Deskripsi: Aplikasi ini menganalisis keberadaan produk berdasarkan brand
 #             dan TANGGAL tertentu di berbagai toko kompetitor.
-#  Pembaruan v7.5: Menambahkan default sort Z-A berdasarkan Omzet pada tabel detail.
+#  Pembaruan v7.6: Mengubah format tabel ringkasan menjadi pivot (toko sebagai kolom).
 # ===================================================================================
 
 # ===================================================================================
@@ -137,42 +137,41 @@ if df_main is not None and not df_main.empty:
         if filtered_df.empty:
             st.warning("Tidak ada data ditemukan untuk brand dan TANGGAL yang dipilih.")
         else:
-            # --- MEMBUAT TABEL RINGKASAN ---
+            # --- MEMBUAT TABEL RINGKASAN BARU (PIVOT) ---
             summary_list = []
             all_stores = sorted(df_main['Toko'].unique())
 
             for store in all_stores:
                 store_data = filtered_df[filtered_df['Toko'] == store]
+                
                 if store_data.empty:
-                    summary_list.append({'Toko': store, 'Total SKU': 0, 'SKU Tersedia': 0, 'SKU Habis': 0, 'HARGA Rata-rata': 0, 'HARGA Termurah': 0, 'HARGA Termahal': 0})
-                    continue
-
-                total_sku = len(store_data)
-                tersedia_count = store_data[store_data['Status'] == 'Tersedia'].shape[0]
-                habis_count = total_sku - tersedia_count
-                
-                HARGA_valid = store_data[(store_data['Status'] == 'Tersedia') & (store_data['HARGA'] > 0)]['HARGA']
-                
-                avg_price = HARGA_valid.mean() if not HARGA_valid.empty else 0
-                min_price = HARGA_valid.min() if not HARGA_valid.empty else 0
-                max_price = HARGA_valid.max() if not HARGA_valid.empty else 0
+                    total_omzet = 0
+                    total_terjual = 0
+                    ready_count = 0
+                    habis_count = 0
+                else:
+                    omzet = store_data['HARGA'] * store_data['Terjual/Bln']
+                    total_omzet = omzet.sum()
+                    total_terjual = store_data['Terjual/Bln'].sum()
+                    ready_count = store_data[store_data['Status'] == 'Tersedia'].shape[0]
+                    habis_count = store_data[store_data['Status'] == 'Habis'].shape[0]
 
                 summary_list.append({
-                    'Toko': store, 'Total SKU': total_sku, 'SKU Tersedia': tersedia_count, 'SKU Habis': habis_count,
-                    'HARGA Rata-rata': avg_price, 'HARGA Termurah': min_price, 'HARGA Termahal': max_price
+                    'Toko': store,
+                    'Total Omzet per Bulan': total_omzet,
+                    'Total Produk Terjual per Bulan': total_terjual,
+                    'Jumlah Produk Ready': ready_count,
+                    'Jumlah Produk Habis': habis_count
                 })
             
-            summary_df = pd.DataFrame(summary_list)
+            summary_df = pd.DataFrame(summary_list).set_index('Toko')
+            pivoted_summary_df = summary_df.T
             
             st.markdown("#### Ringkasan Performa Brand per Toko")
             st.dataframe(
-                summary_df.style.format({
-                    'HARGA Rata-rata': "Rp {:,.0f}", 'HARGA Termurah': "Rp {:,.0f}", 'HARGA Termahal': "Rp {:,.0f}"
-                }).background_gradient(cmap='Greens', subset=['SKU Tersedia'])
-                  .background_gradient(cmap='Reds', subset=['SKU Habis'])
-                  .bar(subset=["Total SKU"], color='#86c5da'),
-                use_container_width=True,
-                hide_index=True
+                pivoted_summary_df.style.format("Rp {:,.0f}", subset=(['Total Omzet per Bulan'], slice(None)))
+                                          .format("{:,.0f}", subset=(['Total Produk Terjual per Bulan', 'Jumlah Produk Ready', 'Jumlah Produk Habis'], slice(None))),
+                use_container_width=True
             )
 
             # --- TAMPILAN DETAIL (DIPERBARUI DENGAN SORTING) ---
