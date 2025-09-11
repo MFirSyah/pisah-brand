@@ -1,9 +1,9 @@
 # ===================================================================================
-#  DASHBOARD ANALISIS BRAND KOMPETITOR V7.4
+#  DASHBOARD ANALISIS BRAND KOMPETITOR V7.5
 #  Dibuat oleh: Firman & Asisten AI Gemini
 #  Deskripsi: Aplikasi ini menganalisis keberadaan produk berdasarkan brand
 #             dan TANGGAL tertentu di berbagai toko kompetitor.
-#  Pembaruan v7.4: Menambahkan kolom Terjual/Bln dan Omzet pada tabel detail.
+#  Pembaruan v7.5: Menambahkan default sort Z-A berdasarkan Omzet pada tabel detail.
 # ===================================================================================
 
 # ===================================================================================
@@ -53,7 +53,7 @@ def load_data_from_gsheets():
             "IT SHOP - REKAP - READY", "IT SHOP - REKAP - HABIS", "JAYA PC - REKAP - READY", 
             "JAYA PC - REKAP - HABIS", "MULTIFUNGSI - REKAP - READY", "MULTIFUNGSI - REKAP - HABIS",
             "TECH ISLAND - REKAP - READY", "TECH ISLAND - REKAP - HABIS", "GG STORE - REKAP - READY", 
-            "GG STORE - REKAP - HABIS", "SURYA MITRA ONLINE - REKAP - READY", "SURYA MITRA ONLINE - REKAP - HABIS"
+            "GG STORE - REKAP - HABIS", "SURYA MITRA ONLINE - REKAP - RE", "SURYA MITRA ONLINE - REKAP - HA"
         ]
         
         all_data = []
@@ -175,7 +175,7 @@ if df_main is not None and not df_main.empty:
                 hide_index=True
             )
 
-            # --- TAMPILAN DETAIL (DIPERBARUI) ---
+            # --- TAMPILAN DETAIL (DIPERBARUI DENGAN SORTING) ---
             with st.expander("Lihat Daftar Produk Lengkap per Toko"):
                 for store in all_stores:
                     st.markdown(f"##### 🏪 **{store}**")
@@ -186,6 +186,9 @@ if df_main is not None and not df_main.empty:
                     else:
                         # Hitung Omzet
                         store_data_detail['Omzet'] = store_data_detail['HARGA'] * store_data_detail['Terjual/Bln']
+                        
+                        # Urutkan berdasarkan Omzet (Z-A)
+                        store_data_detail.sort_values(by='Omzet', ascending=False, inplace=True)
                         
                         # Format kolom untuk tampilan
                         store_data_detail['HARGA (Rp)'] = store_data_detail['HARGA'].apply(lambda x: f"{x:,.0f}".replace(',', '.'))
