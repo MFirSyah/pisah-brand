@@ -1,9 +1,10 @@
 # ===================================================================================
-#  DASHBOARD ANALISIS BRAND KOMPETITOR V7.9
+#  DASHBOARD ANALISIS BRAND KOMPETITOR V7.8 (FIXED)
 #  Dibuat oleh: Firman & Asisten AI Gemini
 #  Deskripsi: Aplikasi ini menganalisis keberadaan produk berdasarkan brand
 #             dan TANGGAL tertentu di berbagai toko kompetitor.
-#  Pembaruan v7.9: Menambahkan penanganan error untuk tanggal yang tidak valid (TypeError fix).
+#  Pembaruan v7.8: Memperbaiki logika pewarnaan pada tabel ringkasan pivot
+#                  + perbaikan pemilihan tanggal agar tidak error.
 # ===================================================================================
 
 # ===================================================================================
@@ -25,10 +26,6 @@ st.set_page_config(layout="wide", page_title="Analisis Brand Kompetitor")
 # ===================================================================================
 @st.cache_data(ttl=600, show_spinner="Mengambil data terbaru dari Google Sheets...")
 def load_data_from_gsheets():
-    """
-    Fungsi untuk memuat, menggabungkan, dan membersihkan data dari Google Sheets.
-    Data akan di-cache selama 10 menit untuk efisiensi.
-    """
     try:
         # Menggunakan st.secrets untuk koneksi yang aman
         creds_dict = {
@@ -46,7 +43,7 @@ def load_data_from_gsheets():
         
         gc = gspread.service_account_from_dict(creds_dict)
         spreadsheet = gc.open_by_key("1hl7YPEPg4aaEheN5fBKk65YX3-KdkQBRHCJWhVr9kVQ")
-        
+
         worksheet_names = [
             "DB KLIK - REKAP - READY", "DB KLIK - REKAP - HABIS", "ABDITAMA - REKAP - READY", 
             "ABDITAMA - REKAP - HABIS", "LEVEL99 - REKAP - READY", "LEVEL99 - REKAP - HABIS",
@@ -61,7 +58,8 @@ def load_data_from_gsheets():
             try:
                 worksheet = spreadsheet.worksheet(name)
                 all_values = worksheet.get_all_values()
-                if not all_values: continue
+                if not all_values: 
+                    continue
                 header = all_values[0]
                 clean_header = [h for h in header if h]
                 num_columns = len(clean_header)
@@ -82,21 +80,23 @@ def load_data_from_gsheets():
             return None
             
         df_combined = pd.concat(all_data, ignore_index=True)
-        # Mengubah nama kolom agar lebih konsisten
+        # Normalisasi nama kolom
         df_combined.rename(columns={
             'NAMA': 'Nama Produk', 
+            'HARGA': 'HARGA', 
             'BRAND': 'Brand',
+            'TERJUAL/BLN': 'Terjual/Bln'
         }, inplace=True)
 
-        # Konversi tipe data kolom numerik, handle error jika ada
+        # Konversi tipe data
         df_combined['HARGA'] = pd.to_numeric(df_combined['HARGA'], errors='coerce').fillna(0).astype(int)
-        df_combined['Terjual/Bln'] = pd.to_numeric(df_combined['TERJUAL/BLN'], errors='coerce').fillna(0).astype(int)
+        df_combined['Terjual/Bln'] = pd.to_numeric(df_combined['Terjual/Bln'], errors='coerce').fillna(0).astype(int)
         df_combined['TANGGAL'] = pd.to_datetime(df_combined['TANGGAL'], errors='coerce').dt.date
 
         try:
             kamus_ws = spreadsheet.worksheet("kamus_brand")
             kamus_df = pd.DataFrame(kamus_ws.get_all_records())
-            kamus_brand = {row['Alias'].upper(): row['Brand_Utama'].upper() for index, row in kamus_df.iterrows()}
+            kamus_brand = {row['Alias'].upper(): row['Brand_Utama'].upper() for _, row in kamus_df.iterrows()}
             df_combined['Brand_Utama'] = df_combined['Brand'].str.upper().map(kamus_brand).fillna(df_combined['Brand'].str.upper())
         except gspread.exceptions.WorksheetNotFound:
             st.warning("Worksheet 'kamus_brand' tidak ditemukan.")
@@ -117,23 +117,34 @@ st.markdown("Pilih brand dan TANGGAL untuk melihat ringkasan performa di semua t
 df_main = load_data_from_gsheets()
 
 if df_main is not None and not df_main.empty:
-    # --- PERBAIKAN TypeError ---
-    # Memastikan hanya tanggal valid yang digunakan untuk menentukan rentang min/max
-    valid_dates = df_main['TANGGAL'].dropna()
-    if not valid_dates.empty:
-        min_date = valid_dates.min()
-        max_date = valid_dates.max()
-    else:
-        # Fallback jika tidak ada tanggal valid yang ditemukan
-        min_date = datetime.now().date()
-        max_date = min_date
-
     col1, col2 = st.columns(2)
+
     with col1:
         unique_brands = sorted(df_main['Brand_Utama'].unique())
         selected_brand = st.selectbox("Pilih Brand:", options=unique_brands, index=unique_brands.index("ACER") if "ACER" in unique_brands else 0)
+
     with col2:
-        selected_date = st.date_input("Pilih TANGGAL:", value=max_date, min_value=min_date, max_date=max_date)
+        # Ambil min & max tanggal
+        min_date = df_main['TANGGAL'].min()
+        max_date = df_main['TANGGAL'].max()
+
+        # Pastikan tipe data datetime.date
+        if hasattr(min_date, "to_pydatetime"):
+            min_date = min_date.to_pydatetime().date()
+        elif hasattr(min_date, "date"):
+            min_date = min_date.date()
+
+        if hasattr(max_date, "to_pydatetime"):
+            max_date = max_date.to_pydatetime().date()
+        elif hasattr(max_date, "date"):
+            max_date = max_date.date()
+
+        selected_date = st.date_input(
+            "Pilih TANGGAL:",
+            value=max_date,
+            min_value=min_date,
+            max_value=max_date
+        )
 
     if st.button("Tampilkan Analisis", type="primary", use_container_width=True):
         st.markdown("---")
@@ -144,7 +155,7 @@ if df_main is not None and not df_main.empty:
         if filtered_df.empty:
             st.warning("Tidak ada data ditemukan untuk brand dan TANGGAL yang dipilih.")
         else:
-            # --- MEMBUAT TABEL RINGKASAN BARU (PIVOT) ---
+            # === Ringkasan Performa per Toko ===
             summary_list = []
             all_stores = sorted(df_main['Toko'].unique())
 
@@ -175,16 +186,18 @@ if df_main is not None and not df_main.empty:
             pivoted_summary_df = summary_df.T
             
             st.markdown("#### Ringkasan Performa Brand per Toko")
-            
-            # Menerapkan style ke baris yang benar menggunakan pd.IndexSlice
-            styler = pivoted_summary_df.style.format("Rp {:,.0f}", subset=(pd.IndexSlice[['Total Omzet per Bulan']], slice(None))) \
-                                            .format("{:,.0f}", subset=(pd.IndexSlice[['Total Produk Terjual per Bulan', 'Jumlah Produk Ready', 'Jumlah Produk Habis']], slice(None))) \
-                                            .background_gradient(cmap='Greens', subset=(pd.IndexSlice[['Jumlah Produk Ready']], slice(None))) \
-                                            .background_gradient(cmap='Reds', subset=(pd.IndexSlice[['Jumlah Produk Habis']], slice(None)))
-            
+            styler = pivoted_summary_df.style.format(
+                "Rp {:,.0f}", subset=(pd.IndexSlice[['Total Omzet per Bulan']], slice(None))
+            ).format(
+                "{:,.0f}", subset=(pd.IndexSlice[['Total Produk Terjual per Bulan', 'Jumlah Produk Ready', 'Jumlah Produk Habis']], slice(None))
+            ).background_gradient(
+                cmap='Greens', subset=(pd.IndexSlice[['Jumlah Produk Ready']], slice(None))
+            ).background_gradient(
+                cmap='Reds', subset=(pd.IndexSlice[['Jumlah Produk Habis']], slice(None))
+            )
             st.dataframe(styler, use_container_width=True)
 
-            # --- TAMPILAN DETAIL (DIPERBARUI DENGAN SORTING) ---
+            # === Detail Produk per Toko ===
             with st.expander("Lihat Daftar Produk Lengkap per Toko"):
                 for store in all_stores:
                     st.markdown(f"##### 🏪 **{store}**")
@@ -193,23 +206,12 @@ if df_main is not None and not df_main.empty:
                     if store_data_detail.empty:
                         st.info(f"Brand **{selected_brand}** tidak ditemukan di toko ini.")
                     else:
-                        # Hitung Omzet
                         store_data_detail['Omzet'] = store_data_detail['HARGA'] * store_data_detail['Terjual/Bln']
-                        
-                        # Urutkan berdasarkan Omzet (Z-A)
                         store_data_detail.sort_values(by='Omzet', ascending=False, inplace=True)
-                        
-                        # Format kolom untuk tampilan
                         store_data_detail['HARGA (Rp)'] = store_data_detail['HARGA'].apply(lambda x: f"{x:,.0f}".replace(',', '.'))
                         store_data_detail['Omzet (Rp)'] = store_data_detail['Omzet'].apply(lambda x: f"{x:,.0f}".replace(',', '.'))
-                        
-                        # Tentukan urutan kolom baru
                         kolom_tampilan = ['Nama Produk', 'HARGA (Rp)', 'Terjual/Bln', 'Omzet (Rp)', 'Status']
-                        
-                        st.dataframe(
-                            store_data_detail[kolom_tampilan],
-                            use_container_width=True, hide_index=True
-                        )
+                        st.dataframe(store_data_detail[kolom_tampilan], use_container_width=True, hide_index=True)
+
 else:
     st.error("Gagal memuat data. Periksa kembali koneksi atau konfigurasi Google Sheets Anda di st.secrets.")
-
