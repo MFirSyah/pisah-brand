@@ -2,7 +2,7 @@
 #  DASHBOARD ANALISIS BRAND KOMPETITOR V7.1
 #  Dibuat oleh: Firman & Asisten AI Gemini
 #  Deskripsi: Aplikasi ini menganalisis keberadaan produk berdasarkan brand
-#             dan tanggal tertentu di berbagai toko kompetitor.
+#             dan TANGGAL tertentu di berbagai toko kompetitor.
 #  Pembaruan v7.1: Menambahkan penanganan error untuk header duplikat/kosong
 #                  di Google Sheets.
 # ===================================================================================
@@ -127,7 +127,7 @@ def load_data_from_gsheets():
 # TAMPILAN UTAMA APLIKASI
 # ===================================================================================
 st.title("📊 Dashboard Analisis Brand Kompetitor")
-st.markdown("Pilih brand dan tanggal untuk melihat daftar produk di semua toko kompetitor.")
+st.markdown("Pilih brand dan TANGGAL untuk melihat daftar produk di semua toko kompetitor.")
 
 df = load_data_from_gsheets()
 
@@ -144,10 +144,10 @@ if df is not None and not df.empty:
         )
 
     with col2:
-        min_date = df['Tanggal'].min()
-        max_date = df['Tanggal'].max()
+        min_date = df['TANGGAL'].min()
+        max_date = df['TANGGAL'].max()
         selected_date = st.date_input(
-            "Pilih Tanggal:",
+            "Pilih TANGGAL:",
             value=max_date,
             min_value=min_date,
             max_value=max_date
@@ -155,12 +155,12 @@ if df is not None and not df.empty:
 
     if st.button("Tampilkan Analisis", type="primary", use_container_width=True):
         st.markdown("---")
-        st.subheader(f"Hasil Analisis untuk Brand '{selected_brand}' pada Tanggal {selected_date.strftime('%d %B %Y')}")
+        st.subheader(f"Hasil Analisis untuk Brand '{selected_brand}' pada TANGGAL {selected_date.strftime('%d %B %Y')}")
 
-        filtered_df = df[(df['Brand_Utama'] == selected_brand) & (df['Tanggal'] == selected_date)]
+        filtered_df = df[(df['Brand_Utama'] == selected_brand) & (df['TANGGAL'] == selected_date)]
 
         if filtered_df.empty:
-            st.warning("Tidak ada data ditemukan untuk brand dan tanggal yang dipilih. Coba tanggal atau brand lain.")
+            st.warning("Tidak ada data ditemukan untuk brand dan TANGGAL yang dipilih. Coba TANGGAL atau brand lain.")
         else:
             all_stores = sorted(df['Toko'].unique())
             
@@ -169,7 +169,7 @@ if df is not None and not df.empty:
                     store_data = filtered_df[filtered_df['Toko'] == store].copy()
                     
                     if store_data.empty:
-                        st.info(f"Brand **{selected_brand}** tidak ditemukan di toko ini pada tanggal yang dipilih.")
+                        st.info(f"Brand **{selected_brand}** tidak ditemukan di toko ini pada TANGGAL yang dipilih.")
                     else:
                         total_produk = len(store_data)
                         tersedia_count = store_data[store_data['Status'] == 'Tersedia'].shape[0]
