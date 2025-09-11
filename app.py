@@ -1,10 +1,10 @@
 # ===================================================================================
-#  DASHBOARD ANALISIS BRAND KOMPETITOR V7.8 (FIXED)
+#  DASHBOARD ANALISIS BRAND KOMPETITOR V7.9 (FIXED & ENHANCED)
 #  Dibuat oleh: Firman & Asisten AI Gemini
 #  Deskripsi: Aplikasi ini menganalisis keberadaan produk berdasarkan brand
 #             dan TANGGAL tertentu di berbagai toko kompetitor.
-#  Pembaruan v7.8: Memperbaiki logika pewarnaan pada tabel ringkasan pivot
-#                  + perbaikan pemilihan tanggal agar tidak error.
+#  Pembaruan v7.9: Mengimplementasikan pewarnaan dinamis per kolom pada
+#                   tabel ringkasan untuk visualisasi status stok yang lebih baik.
 # ===================================================================================
 
 # ===================================================================================
@@ -185,17 +185,42 @@ if df_main is not None and not df_main.empty:
             summary_df = pd.DataFrame(summary_list).set_index('Toko')
             pivoted_summary_df = summary_df.T
             
+            # === BAGIAN YANG DIPERBARUI (START) ===
             st.markdown("#### Ringkasan Performa Brand per Toko")
+
+            # Fungsi untuk menentukan warna latar belakang kolom berdasarkan status stok
+            def color_by_stock_status(col):
+                ready_count = col.loc['Jumlah Produk Ready']
+                habis_count = col.loc['Jumlah Produk Habis']
+                
+                # Siapkan style default (tanpa warna) untuk semua sel di kolom
+                styles = [''] * len(col)
+                
+                # Jangan warnai jika tidak ada produk sama sekali
+                if ready_count == 0 and habis_count == 0:
+                    return styles
+                
+                # Tentukan warna berdasarkan perbandingan
+                if ready_count > habis_count:
+                    color = '#D4EDDA'  # Hijau muda
+                elif habis_count > ready_count:
+                    color = '#F8D7DA'  # Merah muda
+                else: # Jika jumlahnya sama
+                    color = '#FFF3CD'  # Kuning muda
+                    
+                # Terapkan warna ke semua sel di kolom ini
+                styles = [f'background-color: {color}'] * len(col)
+                return styles
+
+            # Terapkan pemformatan angka dan fungsi pewarnaan kustom
             styler = pivoted_summary_df.style.format(
                 "Rp {:,.0f}", subset=(pd.IndexSlice[['Total Omzet per Bulan']], slice(None))
             ).format(
                 "{:,.0f}", subset=(pd.IndexSlice[['Total Produk Terjual per Bulan', 'Jumlah Produk Ready', 'Jumlah Produk Habis']], slice(None))
-            ).background_gradient(
-                cmap='Greens', subset=(pd.IndexSlice[['Jumlah Produk Ready']], slice(None))
-            ).background_gradient(
-                cmap='Reds', subset=(pd.IndexSlice[['Jumlah Produk Habis']], slice(None))
-            )
+            ).apply(color_by_stock_status, axis=0) # axis=0 berarti menerapkan fungsi per kolom
+            
             st.dataframe(styler, use_container_width=True)
+            # === BAGIAN YANG DIPERBARUI (END) ===
 
             # === Detail Produk per Toko ===
             with st.expander("Lihat Daftar Produk Lengkap per Toko"):
