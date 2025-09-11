@@ -1,9 +1,9 @@
 # ===================================================================================
-#  DASHBOARD ANALISIS BRAND KOMPETITOR V7.6
+#  DASHBOARD ANALISIS BRAND KOMPETITOR V7.8
 #  Dibuat oleh: Firman & Asisten AI Gemini
 #  Deskripsi: Aplikasi ini menganalisis keberadaan produk berdasarkan brand
 #             dan TANGGAL tertentu di berbagai toko kompetitor.
-#  Pembaruan v7.6: Mengubah format tabel ringkasan menjadi pivot (toko sebagai kolom).
+#  Pembaruan v7.8: Memperbaiki logika pewarnaan pada tabel ringkasan pivot.
 # ===================================================================================
 
 # ===================================================================================
@@ -53,7 +53,7 @@ def load_data_from_gsheets():
             "IT SHOP - REKAP - READY", "IT SHOP - REKAP - HABIS", "JAYA PC - REKAP - READY", 
             "JAYA PC - REKAP - HABIS", "MULTIFUNGSI - REKAP - READY", "MULTIFUNGSI - REKAP - HABIS",
             "TECH ISLAND - REKAP - READY", "TECH ISLAND - REKAP - HABIS", "GG STORE - REKAP - READY", 
-            "GG STORE - REKAP - HABIS", "SURYA MITRA ONLINE - REKAP - READY", "SURYA MITRA ONLINE - REKAP - HABIS"
+            "GG STORE - REKAP - HABIS", "SURYA MITRA ONLINE - REKAP - RE", "SURYA MITRA ONLINE - REKAP - HA"
         ]
         
         all_data = []
@@ -126,7 +126,7 @@ if df_main is not None and not df_main.empty:
     with col2:
         min_date = df_main['TANGGAL'].min()
         max_date = df_main['TANGGAL'].max()
-        selected_date = st.date_input("Pilih TANGGAL:", value=max_date, min_value=min_date, max_value=max_date)
+        selected_date = st.date_input("Pilih TANGGAL:", value=max_date, min_value=min_date, max_date=max_date)
 
     if st.button("Tampilkan Analisis", type="primary", use_container_width=True):
         st.markdown("---")
@@ -168,11 +168,14 @@ if df_main is not None and not df_main.empty:
             pivoted_summary_df = summary_df.T
             
             st.markdown("#### Ringkasan Performa Brand per Toko")
-            st.dataframe(
-                pivoted_summary_df.style.format("Rp {:,.0f}", subset=(['Total Omzet per Bulan'], slice(None)))
-                                          .format("{:,.0f}", subset=(['Total Produk Terjual per Bulan', 'Jumlah Produk Ready', 'Jumlah Produk Habis'], slice(None))),
-                use_container_width=True
-            )
+            
+            # Menerapkan style ke baris yang benar menggunakan pd.IndexSlice
+            styler = pivoted_summary_df.style.format("Rp {:,.0f}", subset=(pd.IndexSlice[['Total Omzet per Bulan']], slice(None))) \
+                                            .format("{:,.0f}", subset=(pd.IndexSlice[['Total Produk Terjual per Bulan', 'Jumlah Produk Ready', 'Jumlah Produk Habis']], slice(None))) \
+                                            .background_gradient(cmap='Greens', subset=(pd.IndexSlice[['Jumlah Produk Ready']], slice(None))) \
+                                            .background_gradient(cmap='Reds', subset=(pd.IndexSlice[['Jumlah Produk Habis']], slice(None)))
+            
+            st.dataframe(styler, use_container_width=True)
 
             # --- TAMPILAN DETAIL (DIPERBARUI DENGAN SORTING) ---
             with st.expander("Lihat Daftar Produk Lengkap per Toko"):
@@ -202,3 +205,4 @@ if df_main is not None and not df_main.empty:
                         )
 else:
     st.error("Gagal memuat data. Periksa kembali koneksi atau konfigurasi Google Sheets Anda di st.secrets.")
+
