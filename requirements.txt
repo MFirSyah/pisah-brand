@@ -3,3 +3,5 @@ pandas
 gspread
 thefuzz
 python-Levenshtein
+numpy
+matplotlib
