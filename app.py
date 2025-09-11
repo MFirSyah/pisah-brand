@@ -49,6 +49,11 @@ def load_data():
 
     return df.dropna(subset=['Tanggal', 'Brand'])
 
+# Fungsi konversi CSV
+@st.cache_data
+def convert_to_csv(df):
+    return df.to_csv(index=False).encode('utf-8')
+
 # Load data
 df = load_data()
 if df.empty:
@@ -79,3 +84,12 @@ else:
     st.dataframe(df_filtered, use_container_width=True, hide_index=True)
     total_omzet = df_filtered['Omzet'].sum()
     st.metric("Total Omzet", f"Rp {total_omzet:,.0f}")
+
+    # Tombol export CSV
+    csv_data = convert_to_csv(df_filtered)
+    st.download_button(
+        label="📥 Export CSV",
+        data=csv_data,
+        file_name=f"data_{selected_brand}_{start_date}_{end_date}.csv",
+        mime="text/csv"
+    )
