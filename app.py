@@ -57,7 +57,7 @@ def load_data_from_gsheets():
             "MULTIFUNGSI - REKAP - READY", "MULTIFUNGSI - REKAP - HABIS",
             "TECH ISLAND - REKAP - READY", "TECH ISLAND - REKAP - HABIS",
             "GG STORE - REKAP - READY", "GG STORE - REKAP - HABIS",
-            "SURYA MITRA ONLINE - REKAP - RE", "SURYA MITRA ONLINE - REKAP - HA"
+            "SURYA MITRA ONLINE - REKAP - READY", "SURYA MITRA ONLINE - REKAP - HABIS"
         ]
         
         all_data = []
