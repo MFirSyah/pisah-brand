@@ -204,4 +204,3 @@ if df_main is not None and not df_main.empty:
                         )
 else:
     st.error("Gagal memuat data. Periksa kembali koneksi atau konfigurasi Google Sheets Anda di st.secrets.")
-
