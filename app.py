@@ -1,9 +1,9 @@
 # ===================================================================================
-#  DASHBOARD ANALISIS BRAND KOMPETITOR V7.8
+#  DASHBOARD ANALISIS BRAND KOMPETITOR V7.9
 #  Dibuat oleh: Firman & Asisten AI Gemini
 #  Deskripsi: Aplikasi ini menganalisis keberadaan produk berdasarkan brand
 #             dan TANGGAL tertentu di berbagai toko kompetitor.
-#  Pembaruan v7.8: Memperbaiki logika pewarnaan pada tabel ringkasan pivot.
+#  Pembaruan v7.9: Menambahkan penanganan error untuk tanggal yang tidak valid (TypeError fix).
 # ===================================================================================
 
 # ===================================================================================
@@ -85,14 +85,12 @@ def load_data_from_gsheets():
         # Mengubah nama kolom agar lebih konsisten
         df_combined.rename(columns={
             'NAMA': 'Nama Produk', 
-            'HARGA': 'HARGA', 
             'BRAND': 'Brand',
-            'TERJUAL/BLN': 'Terjual/Bln'
         }, inplace=True)
 
         # Konversi tipe data kolom numerik, handle error jika ada
         df_combined['HARGA'] = pd.to_numeric(df_combined['HARGA'], errors='coerce').fillna(0).astype(int)
-        df_combined['Terjual/Bln'] = pd.to_numeric(df_combined['Terjual/Bln'], errors='coerce').fillna(0).astype(int)
+        df_combined['Terjual/Bln'] = pd.to_numeric(df_combined['TERJUAL/BLN'], errors='coerce').fillna(0).astype(int)
         df_combined['TANGGAL'] = pd.to_datetime(df_combined['TANGGAL'], errors='coerce').dt.date
 
         try:
@@ -119,13 +117,22 @@ st.markdown("Pilih brand dan TANGGAL untuk melihat ringkasan performa di semua t
 df_main = load_data_from_gsheets()
 
 if df_main is not None and not df_main.empty:
+    # --- PERBAIKAN TypeError ---
+    # Memastikan hanya tanggal valid yang digunakan untuk menentukan rentang min/max
+    valid_dates = df_main['TANGGAL'].dropna()
+    if not valid_dates.empty:
+        min_date = valid_dates.min()
+        max_date = valid_dates.max()
+    else:
+        # Fallback jika tidak ada tanggal valid yang ditemukan
+        min_date = datetime.now().date()
+        max_date = min_date
+
     col1, col2 = st.columns(2)
     with col1:
         unique_brands = sorted(df_main['Brand_Utama'].unique())
         selected_brand = st.selectbox("Pilih Brand:", options=unique_brands, index=unique_brands.index("ACER") if "ACER" in unique_brands else 0)
     with col2:
-        min_date = df_main['TANGGAL'].min()
-        max_date = df_main['TANGGAL'].max()
         selected_date = st.date_input("Pilih TANGGAL:", value=max_date, min_value=min_date, max_date=max_date)
 
     if st.button("Tampilkan Analisis", type="primary", use_container_width=True):
