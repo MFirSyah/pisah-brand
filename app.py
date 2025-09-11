@@ -1,10 +1,10 @@
 # ===================================================================================
-#  DASHBOARD ANALISIS BRAND KOMPETITOR V7.9 (FIXED & ENHANCED)
+#  DASHBOARD ANALISIS BRAND KOMPETITOR V7.10 (FIXED)
 #  Dibuat oleh: Firman & Asisten AI Gemini
 #  Deskripsi: Aplikasi ini menganalisis keberadaan produk berdasarkan brand
 #             dan TANGGAL tertentu di berbagai toko kompetitor.
-#  Pembaruan v7.9: Mengimplementasikan pewarnaan dinamis per kolom pada
-#                   tabel ringkasan untuk visualisasi status stok yang lebih baik.
+#  Pembaruan v7.10: Menghapus pewarnaan dinamis dari tabel ringkasan
+#                    sesuai permintaan.
 # ===================================================================================
 
 # ===================================================================================
@@ -188,36 +188,12 @@ if df_main is not None and not df_main.empty:
             # === BAGIAN YANG DIPERBARUI (START) ===
             st.markdown("#### Ringkasan Performa Brand per Toko")
 
-            # Fungsi untuk menentukan warna latar belakang kolom berdasarkan status stok
-            def color_by_stock_status(col):
-                ready_count = col.loc['Jumlah Produk Ready']
-                habis_count = col.loc['Jumlah Produk Habis']
-                
-                # Siapkan style default (tanpa warna) untuk semua sel di kolom
-                styles = [''] * len(col)
-                
-                # Jangan warnai jika tidak ada produk sama sekali
-                if ready_count == 0 and habis_count == 0:
-                    return styles
-                
-                # Tentukan warna berdasarkan perbandingan
-                if ready_count > habis_count:
-                    color = '#D4EDDA'  # Hijau muda
-                elif habis_count > ready_count:
-                    color = '#F8D7DA'  # Merah muda
-                else: # Jika jumlahnya sama
-                    color = '#FFF3CD'  # Kuning muda
-                    
-                # Terapkan warna ke semua sel di kolom ini
-                styles = [f'background-color: {color}'] * len(col)
-                return styles
-
-            # Terapkan pemformatan angka dan fungsi pewarnaan kustom
+            # Hanya terapkan pemformatan angka, tanpa pewarnaan latar belakang
             styler = pivoted_summary_df.style.format(
                 "Rp {:,.0f}", subset=(pd.IndexSlice[['Total Omzet per Bulan']], slice(None))
             ).format(
                 "{:,.0f}", subset=(pd.IndexSlice[['Total Produk Terjual per Bulan', 'Jumlah Produk Ready', 'Jumlah Produk Habis']], slice(None))
-            ).apply(color_by_stock_status, axis=0) # axis=0 berarti menerapkan fungsi per kolom
+            )
             
             st.dataframe(styler, use_container_width=True)
             # === BAGIAN YANG DIPERBARUI (END) ===
