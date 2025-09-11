@@ -1,9 +1,10 @@
 # ===================================================================================
-#  DASHBOARD ANALISIS BRAND KOMPETITOR V7
+#  DASHBOARD ANALISIS BRAND KOMPETITOR V7.1
 #  Dibuat oleh: Firman & Asisten AI Gemini
 #  Deskripsi: Aplikasi ini menganalisis keberadaan produk berdasarkan brand
 #             dan tanggal tertentu di berbagai toko kompetitor.
-#  Metode Koneksi: Aman & Stabil (gspread + st.secrets individual)
+#  Pembaruan v7.1: Menambahkan penanganan error untuk header duplikat/kosong
+#                  di Google Sheets.
 # ===================================================================================
 
 # ===================================================================================
@@ -47,7 +48,6 @@ def load_data_from_gsheets():
         gc = gspread.service_account_from_dict(creds_dict)
         spreadsheet = gc.open_by_key("1hl7YPEPg4aaEheN5fBKk65YX3-KdkQBRHCJWhVr9kVQ")
         
-        # Daftar semua sheet rekap kompetitor
         worksheet_names = [
             "DB KLIK - REKAP - READY", "DB KLIK - REKAP - HABIS",
             "ABDITAMA - REKAP - READY", "ABDITAMA - REKAP - HABIS",
@@ -57,16 +57,34 @@ def load_data_from_gsheets():
             "MULTIFUNGSI - REKAP - READY", "MULTIFUNGSI - REKAP - HABIS",
             "TECH ISLAND - REKAP - READY", "TECH ISLAND - REKAP - HABIS",
             "GG STORE - REKAP - READY", "GG STORE - REKAP - HABIS",
-            "SURYA MITRA ONLINE - REKAP - READY", "SURYA MITRA ONLINE - REKAP - HABIS"
+            "SURYA MITRA ONLINE - REKAP - RE", "SURYA MITRA ONLINE - REKAP - HA"
         ]
         
         all_data = []
         for name in worksheet_names:
             try:
                 worksheet = spreadsheet.worksheet(name)
-                df = pd.DataFrame(worksheet.get_all_records())
                 
-                # Ekstrak nama toko dan status dari nama worksheet
+                # --- LOGIKA BARU UNTUK MENGHINDARI ERROR HEADER ---
+                # 1. Ambil semua nilai, termasuk header
+                all_values = worksheet.get_all_values()
+                if not all_values:
+                    continue # Lewati sheet jika kosong
+
+                # 2. Ambil header dan bersihkan dari string kosong
+                header = all_values[0]
+                clean_header = [h for h in header if h]
+                
+                # 3. Hitung jumlah kolom yang valid
+                num_columns = len(clean_header)
+
+                # 4. Ambil data dan pastikan hanya mengambil data dari kolom yang valid
+                data_rows = [row[:num_columns] for row in all_values[1:]]
+
+                # 5. Buat DataFrame dengan header yang sudah bersih
+                df = pd.DataFrame(data_rows, columns=clean_header)
+                # --- AKHIR LOGIKA BARU ---
+
                 parts = name.split(" - ")
                 df['Toko'] = parts[0].strip()
                 status_rekap = parts[-1].strip()
@@ -87,23 +105,19 @@ def load_data_from_gsheets():
         df_combined = pd.concat(all_data, ignore_index=True)
         df_combined.rename(columns={'NAMA': 'Nama Produk', 'HARGA': 'Harga', 'BRAND': 'Brand'}, inplace=True)
 
-        # Proses pembersihan data
         df_combined['Harga'] = pd.to_numeric(df_combined['Harga'], errors='coerce').fillna(0).astype(int)
         df_combined['TANGGAL'] = pd.to_datetime(df_combined['TANGGAL'], errors='coerce').dt.date
 
-        # Memuat kamus brand untuk standardisasi
         try:
             kamus_ws = spreadsheet.worksheet("kamus_brand")
             kamus_df = pd.DataFrame(kamus_ws.get_all_records())
             kamus_brand = {row['Alias'].upper(): row['Brand_Utama'].upper() for index, row in kamus_df.iterrows()}
-            
-            # Standardisasi nama brand
             df_combined['Brand_Utama'] = df_combined['Brand'].str.upper().map(kamus_brand).fillna(df_combined['Brand'].str.upper())
         except gspread.exceptions.WorksheetNotFound:
             st.warning("Worksheet 'kamus_brand' tidak ditemukan. Standardisasi brand tidak dilakukan.")
             df_combined['Brand_Utama'] = df_combined['Brand'].str.upper()
 
-        return df_combined.dropna(subset=['Tanggal', 'Brand_Utama'])
+        return df_combined.dropna(subset=['TANGGAL', 'Brand_Utama'])
 
     except Exception as e:
         st.error(f"Terjadi kesalahan saat memuat data: {e}")
@@ -119,20 +133,17 @@ df = load_data_from_gsheets()
 
 if df is not None and not df.empty:
     
-    # --- Filter Input ---
     col1, col2 = st.columns(2)
     
     with col1:
-        # Ambil daftar brand unik yang sudah distandardisasi dan urutkan
         unique_brands = sorted(df['Brand_Utama'].unique())
         selected_brand = st.selectbox(
             "Pilih Brand:",
             options=unique_brands,
-            index=unique_brands.index("ACER") if "ACER" in unique_brands else 0 # Default ke ACER jika ada
+            index=unique_brands.index("ACER") if "ACER" in unique_brands else 0
         )
 
     with col2:
-        # Tentukan tanggal min dan max dari data
         min_date = df['Tanggal'].min()
         max_date = df['Tanggal'].max()
         selected_date = st.date_input(
@@ -142,12 +153,10 @@ if df is not None and not df.empty:
             max_value=max_date
         )
 
-    # --- Tombol untuk memulai analisis ---
     if st.button("Tampilkan Analisis", type="primary", use_container_width=True):
         st.markdown("---")
         st.subheader(f"Hasil Analisis untuk Brand '{selected_brand}' pada Tanggal {selected_date.strftime('%d %B %Y')}")
 
-        # Filter data utama berdasarkan input pengguna
         filtered_df = df[(df['Brand_Utama'] == selected_brand) & (df['Tanggal'] == selected_date)]
 
         if filtered_df.empty:
@@ -172,15 +181,13 @@ if df is not None and not df.empty:
                         m_col1.metric(label="Stok Tersedia", value=f"{tersedia_count} SKU")
                         m_col2.metric(label="Stok Habis", value=f"{habis_count} SKU")
                         
-                        # Format harga agar lebih mudah dibaca
                         store_data['Harga (Rp)'] = store_data['Harga'].apply(lambda x: f"{x:,.0f}".replace(',', '.'))
                         
-                        # Tampilkan daftar produk
                         st.dataframe(
                             store_data[['Nama Produk', 'Harga (Rp)', 'Status']],
                             use_container_width=True,
                             hide_index=True
                         )
-
 else:
     st.error("Gagal memuat data. Periksa kembali koneksi atau konfigurasi Google Sheets Anda di st.secrets.")
+
