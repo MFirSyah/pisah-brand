@@ -1,10 +1,10 @@
 # ===================================================================================
-#  DASHBOARD ANALISIS BRAND KOMPETITOR V7.10 (FIXED)
+#  DASHBOARD ANALISIS BRAND KOMPETITOR V7.11 (FIXED & SORTED)
 #  Dibuat oleh: Firman & Asisten AI Gemini
 #  Deskripsi: Aplikasi ini menganalisis keberadaan produk berdasarkan brand
 #             dan TANGGAL tertentu di berbagai toko kompetitor.
-#  Pembaruan v7.10: Menghapus pewarnaan dinamis dari tabel ringkasan
-#                    sesuai permintaan.
+#  Pembaruan v7.11: Menambahkan pengurutan pada tabel ringkasan dan detail
+#                    produk berdasarkan omzet tertinggi.
 # ===================================================================================
 
 # ===================================================================================
@@ -184,12 +184,17 @@ if df_main is not None and not df_main.empty:
                 })
             
             summary_df = pd.DataFrame(summary_list).set_index('Toko')
-            pivoted_summary_df = summary_df.T
             
             # === BAGIAN YANG DIPERBARUI (START) ===
+            # Urutkan DataFrame berdasarkan 'Total Omzet per Bulan' dari terbesar ke terkecil
+            summary_df_sorted = summary_df.sort_values(by='Total Omzet per Bulan', ascending=False)
+            
+            # Transpose DataFrame yang SUDAH diurutkan
+            pivoted_summary_df = summary_df_sorted.T
+            
             st.markdown("#### Ringkasan Performa Brand per Toko")
 
-            # Hanya terapkan pemformatan angka, tanpa pewarnaan latar belakang
+            # Terapkan pemformatan angka pada tabel yang sudah diurutkan
             styler = pivoted_summary_df.style.format(
                 "Rp {:,.0f}", subset=(pd.IndexSlice[['Total Omzet per Bulan']], slice(None))
             ).format(
@@ -197,11 +202,14 @@ if df_main is not None and not df_main.empty:
             )
             
             st.dataframe(styler, use_container_width=True)
-            # === BAGIAN YANG DIPERBARUI (END) ===
 
             # === Detail Produk per Toko ===
             with st.expander("Lihat Daftar Produk Lengkap per Toko"):
-                for store in all_stores:
+                # Ambil daftar toko yang sudah diurutkan dari index summary_df_sorted
+                sorted_stores = summary_df_sorted.index.tolist()
+
+                # Loop melalui daftar toko yang sudah terurut
+                for store in sorted_stores:
                     st.markdown(f"##### 🏪 **{store}**")
                     store_data_detail = filtered_df[filtered_df['Toko'] == store].copy()
                     
@@ -209,11 +217,13 @@ if df_main is not None and not df_main.empty:
                         st.info(f"Brand **{selected_brand}** tidak ditemukan di toko ini.")
                     else:
                         store_data_detail['Omzet'] = store_data_detail['HARGA'] * store_data_detail['Terjual/Bln']
+                        # Urutkan produk di dalam toko berdasarkan omzet tertinggi
                         store_data_detail.sort_values(by='Omzet', ascending=False, inplace=True)
                         store_data_detail['HARGA (Rp)'] = store_data_detail['HARGA'].apply(lambda x: f"{x:,.0f}".replace(',', '.'))
                         store_data_detail['Omzet (Rp)'] = store_data_detail['Omzet'].apply(lambda x: f"{x:,.0f}".replace(',', '.'))
                         kolom_tampilan = ['Nama Produk', 'HARGA (Rp)', 'Terjual/Bln', 'Omzet (Rp)', 'Status']
                         st.dataframe(store_data_detail[kolom_tampilan], use_container_width=True, hide_index=True)
+            # === BAGIAN YANG DIPERBARUI (END) ===
 
 else:
     st.error("Gagal memuat data. Periksa kembali koneksi atau konfigurasi Google Sheets Anda di st.secrets.")
