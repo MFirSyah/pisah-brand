@@ -42,7 +42,7 @@ def load_data_from_gsheets():
         }
         
         gc = gspread.service_account_from_dict(creds_dict)
-        spreadsheet = gc.open_by_key("1hl7YPEPg4aaEheN5fBKk65YX3-KdkQBRHCJWhVr9kVQ")
+        spreadsheet = gc.open_by_key("1g6tcqxGfvennkVuJUQuT5wbo8NRJKwwb90Z2tlmw__Q")
 
         worksheet_names = [
             "DB KLIK - REKAP - READY", "DB KLIK - REKAP - HABIS", "ABDITAMA - REKAP - READY", 
